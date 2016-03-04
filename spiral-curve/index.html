@@ -84,160 +84,185 @@ QuadraticCurve.prototype.setCtrPoint =  function(basePoint){
 	return this
 }
 
+QuadraticCurve.prototype.setStartPoint = function(point){
+	this.startPoint = point;
+	return this;
+}
+
+QuadraticCurve.prototype.setEndPoint = function(point){
+	this.endPoint = point;
+	return this;
+}
+
 QuadraticCurve.prototype.draw = function(ctx){
 
-	console.log(this.startPoint.x,this.startPoint.y,this.endPoint.x,this.endPoint.y,this.ctrPoint.x,this.ctrPoint.y)
+	// console.log(this.startPoint.x,this.startPoint.y,this.endPoint.x,this.endPoint.y,this.ctrPoint.x,this.ctrPoint.y)
 
 	ctx.moveTo(this.startPoint.x,this.startPoint.y)
 	ctx.quadraticCurveTo(this.endPoint.x,this.endPoint.y,this.ctrPoint.x,this.ctrPoint.y);
+	ctx.stroke();
+
 	return this
 }
 
-
-
-window.onload = function() {
-var canvas = document.getElementById("myCanvas");
-var ctx=context = canvas.getContext("2d");
-context.lineWidth = 10;
-
-var circleCenterPoint = {
-	x:canvas.width/2,
-	y:canvas.height/2
-}
+var spiralCurve = new SpiralCurve();
 
 var originAngle = angle = 0;
 
 var originColor = green = [0,255,0];
 var targetColor = red = [255,0,0];
 
-
-
-var prevX= circleCenterPoint.x,
-	prevY = circleCenterPoint.y; //starting point
-
 var startAngle=0,
 	endAngle=0;// starting angle
 
-var angleStepChange = (Math.PI*2)/100; 
+var angleStepChange = (Math.PI*2)/164; 
 
-var spiralCurve = new SpiralCurve();
+window.onload = function() {
+	var canvas = document.getElementById("myCanvas");
+	var ctx=context = canvas.getContext("2d");
+	context.lineWidth = 10;
 
-
-var history = []; // {radius:,angle:}
-var curve = null;
-
-function draw(){
-
-	for (var step=0,steps = 255,colorStepChange = (255/steps); step<steps; step++)
-	{
-
+	var circleCenterPoint = {
+		x:canvas.width/2,
+		y:canvas.height/2
+	}
 
 
 
-		startAngle=angle;
-		angle+=angleStepChange;
-		endAngle = angle;
-		radius = spiralCurve.getR(angle)
+
+	var prevX= circleCenterPoint.x,
+		prevY = circleCenterPoint.y; //starting point
 
 
 
-		context.beginPath();
-		context.strokeStyle=getColor([step*colorStepChange,(255-step*colorStepChange),0]);
+
+
+	var history = []; // {radius:,angle:}
+	var curve = null;
+
+	function draw(){
+
+		for (var step=0,steps = 555,colorStepChange = (255/steps); step<steps; step++)
+		{
 
 
 
-		// context.moveTo(prevX,prevY);
 
-		// ctx.arc(circleCenterPoint.x,circleCenterPoint.y,curve.radius,curve.startAngle,curve.endAngle, false);
-		// console.log(context.strokeStyle)
+			startAngle=angle;
+			angle+=angleStepChange;
+			endAngle = angle;
 
-		console.log(angle*360/Math.PI)
-		nowX = circleCenterPoint.x+ spiralCurve.getX(angle);
-		nowY = circleCenterPoint.y+spiralCurve.getY(angle);
-		// ctx.quadraticCurveTo()
+			nowX = circleCenterPoint.x+ spiralCurve.getX(angle);
+			nowY = circleCenterPoint.y+spiralCurve.getY(angle);
 
-
-		// prevX = 510
-		// prevY = 500
-		// nowX = 500
-		// nowY = 510
-		var quadraticCurve = new QuadraticCurve({
-			x:prevX,
-			y:prevY
-		},{
-			x:nowX,
-			y:nowY
-		}).setCtrPoint().draw(ctx);
-
-		// context.lineTo(nowX,nowY);
-
-		history.push(
-			curve = {
-				radius : radius,
-				startAngle : startAngle,
-				endAngle : endAngle,
-				angleStepChange : angleStepChange,
-				strokeStyle : context.strokeStyle,
-				prevX : prevX,
-				prevY : prevY,
-				nowX : nowX,
-				nowY : nowY
-			}
-		)
-
-		prevX = nowX;
-		prevY = nowY;
+			context.beginPath();
+			context.strokeStyle=getColor([step*colorStepChange,(255-step*colorStepChange),0]);
 
 
-		context.stroke();
+
+			// context.moveTo(prevX,prevY);
+
+			// ctx.arc(circleCenterPoint.x,circleCenterPoint.y,curve.radius,curve.startAngle,curve.endAngle, false);
+			// console.log(context.strokeStyle)
+
+			// console.log(angle*360/Math.PI)
+
+			var quadraticCurve = new QuadraticCurve({
+				x:prevX,
+				y:prevY
+			},{
+				x:nowX,
+				y:nowY
+			}).setCtrPoint().draw(ctx);
+
+			// context.lineTo(nowX,nowY);
+
+			history.push(
+				{
+					preRadius : spiralCurve.getR(startAngle),
+					nowRadius : spiralCurve.getR(endAngle),
+					// radius : spiralCurve.getR(startAngle),
+					startAngle : startAngle,
+					endAngle : endAngle,
+					angleStepChange : angleStepChange,
+					strokeStyle : context.strokeStyle,
+					prevX : prevX,
+					prevY : prevY,
+					nowX : nowX,
+					nowY : nowY,
+					quadraticCurve : quadraticCurve
+				}
+			)
+
+			prevX = nowX;
+			prevY = nowY;
+
+		}
 
 	}
 
-}
+	var repeatDraw = function(){
 
-var repeatDraw = function(){
+		ctx.clearRect(0,0,1000,1000); 
 
-	ctx.clearRect(0,0,1000,1000); 
+		function rotateCurve(curve,angle){
+			angle = Math.PI/4
+			curve.startAngle =curve.startAngle + (angle || curve.angleStepChange);
+			curve.endAngle =curve.endAngle + (angle || curve.angleStepChange);
 
-	function rotatePoint(point,angle){
-		// var angle = 90
-		point.startAngle = point.startAngle + (angle || point.angleStepChange);
-		point.endAngle = point.endAngle + (angle || point.angleStepChange);
+			console.log(curve.startAngle,curve.endAngle,curve.preRadius,curve.nowRadius)
+
+			curve.quadraticCurve.setStartPoint({
+
+				x:curve.preRadius*Math.cos(curve.startAngle)+circleCenterPoint.x,
+				y:curve.preRadius*Math.sin(curve.startAngle)+circleCenterPoint.y
+
+			}).setEndPoint({
+
+				x:curve.nowRadius*Math.cos(curve.endAngle)+circleCenterPoint.x,
+				y:curve.nowRadius*Math.sin(curve.endAngle)+circleCenterPoint.y
+
+			}).setCtrPoint();
+
+		}
+
+
+
+		function beforeStroke(curve){
+
+			context.beginPath();
+
+			context.strokeStyle=curve.strokeStyle;
+
+			rotateCurve(curve)
+		}
+
+		function afterStroke(){}
+
+
+		history.forEach(function(curve){
+
+			beforeStroke(curve)
+
+			curve.quadraticCurve.draw(ctx)
+// console.log(curve.quadraticCurve.endPoint.x,curve.quadraticCurve.endPoint.y,curve.quadraticCurve.ctrPoint.x,curve.quadraticCurve.ctrPoint.y)
+			// console.log(circleCenterPoint.x,circleCenterPoint.y,curve.radius,curve.startAngle,curve.endAngle)
+
+			// ctx.arc(circleCenterPoint.x,circleCenterPoint.y,curve.radius,curve.startAngle,curve.endAngle)
+
+			context.stroke();
+
+			afterStroke();
+		})
 
 	}
 
-	function beforeStroke(point){
+	setInterval(function(){
+		repeatDraw()
+	},100)
 
-		context.beginPath();
-
-		context.strokeStyle=point.strokeStyle;
-
-		rotatePoint(point)
-	}
-
-	function afterStroke(){}
-
-
-	history.forEach(function(point){
-
-		beforeStroke(point)
-
-
-		ctx.arc(circleCenterPoint.x,circleCenterPoint.y,point.radius,point.startAngle,point.endAngle)
-
-		context.stroke();
-
-		afterStroke();
-	})
-
-}
-
-setInterval(function(){
+	draw()
 	// repeatDraw()
-},16)
-
-draw()
-// repeatDraw()
 }
 </script>
 </head>

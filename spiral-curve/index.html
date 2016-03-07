@@ -15,6 +15,275 @@ function vector(x,y){
 }
 
 function SpiralCurve(distance,adjustAngle,initRadius){
+	this.distance = distance || 60;
+	this.radius = initRadius || 0;
+	this.adjustAngle = adjustAngle || 0;
+}
+
+SpiralCurve.prototype.getR =function(angle){
+	// return radius++;
+	var angle = angle+this.adjustAngle;
+	this.radius = (this.distance/(2*Math.PI))*(angle);
+	// console.log(angle,this.radius)
+	return this.radius;
+}
+
+SpiralCurve.prototype.getY = function(angle){
+	return this.getR(angle)*Math.sin(angle);
+}
+
+SpiralCurve.prototype.getX = function(angle){
+	return this.getR(angle)*Math.cos(angle);
+}
+
+SpiralCurve.prototype.setAdjustAngle = function(angle){
+	return this.adjustAngle = angle
+}
+
+SpiralCurve.prototype.getAngleByGirth = function(girth){
+	return Math.sqrt(4*Math.PI*girth/this.distance)
+}
+
+function QuadraticCurve(startPoint,endPoint,ctrPoint){
+	this.startPoint = startPoint;
+	this.endPoint = endPoint;
+	this.ctrPoint = ctrPoint || {x:0,y:0};
+}
+
+QuadraticCurve.prototype.setCtrPointByBasePoint =  function(basePoint){
+	var basePoint = basePoint || {x:500,y:500};
+	var x,y
+
+/*verctor compute
+*OA*AP = 0
+*OB*BP = 0
+*解二元一次方程
+*/
+	var ax = this.startPoint.x
+	var ay = this.startPoint.y
+
+	var bx = this.endPoint.x
+	var by = this.endPoint.y
+
+	var oax = ( ax - basePoint.x )
+	var oay = ( ay - basePoint.y )
+
+	var obx = ( bx - basePoint.x )
+	var oby = ( by - basePoint.y )
+
+	// (x - ax) * oax + ( y - ay )*oay = 0
+	// (x - bx) * obx + ( y - by )*oby = 0
+
+	// oax*x + oay*y = ax*oax + ay*oay
+	// obx*x + oby*y = bx*obx + by*oby
+
+	x =( ( ay-by )*( oby*oay )+ax*oax*oby-bx*obx*oay )/(oax*oby-obx*oay)
+	y =( ( ax-bx )*( obx*oax )+ay*oay*obx-by*oby*oax )/(oay*obx-oby*oax)
+
+	this.ctrPoint = {
+		x : x,
+		y : y
+	}
+
+	return this
+}
+
+QuadraticCurve.prototype.setStartPoint = function(point){
+	this.startPoint = point;
+	return this;
+}
+
+QuadraticCurve.prototype.setEndPoint = function(point){
+	this.endPoint = point;
+	return this;
+}
+
+QuadraticCurve.prototype.draw = function(ctx){
+
+	// console.log(this.startPoint.x,this.startPoint.y,this.endPoint.x,this.endPoint.y,this.ctrPoint.x,this.ctrPoint.y)
+
+	ctx.moveTo(this.startPoint.x,this.startPoint.y)
+	ctx.quadraticCurveTo(this.endPoint.x,this.endPoint.y,this.ctrPoint.x,this.ctrPoint.y);
+	ctx.stroke();
+
+	return this
+}
+
+var spiralCurve = new SpiralCurve();
+
+
+var originColor = green = [0,255,0];
+var targetColor = red = [255,0,0];
+
+// var originAngle = angle = 0;
+var startAngle=0,
+	endAngle=0;// starting angle
+var angleStepChange = (Math.PI*2)/164; 
+
+var startGirth = 0,
+	endGirth = 0,
+	girth = 0;//周长
+var girthStepChange = 10
+
+
+var historyMap = []; // {radius:,angle:}
+var curve = null;
+
+window.onload = function() {
+	var canvas = document.getElementById("myCanvas");
+	var ctx=context = canvas.getContext("2d");
+	context.lineWidth = 10;
+
+	var circleCenterPoint = {
+		x:canvas.width/2,
+		y:canvas.height/2
+	}
+
+	var prevX= circleCenterPoint.x,
+		prevY = circleCenterPoint.y; //starting point
+
+
+	function draw(){
+
+		for (var step=0,steps = 255,colorStepChange = (255/steps); step<steps; step++)
+		{
+
+			startAngle = spiralCurve.getAngleByGirth(girth)
+			girth +=girthStepChange;
+			endAngle = spiralCurve.getAngleByGirth(girth)
+
+			// startAngle=angle;
+			// angle+=angleStepChange;
+			// endAngle = angle;
+
+
+
+			nowX = circleCenterPoint.x+ spiralCurve.getX(endAngle);
+			nowY = circleCenterPoint.y+spiralCurve.getY(endAngle);
+
+			context.beginPath();
+			context.strokeStyle=getColor([step*colorStepChange,(255-step*colorStepChange),0]);
+
+			var quadraticCurve = new QuadraticCurve({
+				x:prevX,
+				y:prevY
+			},{
+				x:nowX,
+				y:nowY
+			}).setCtrPointByBasePoint().draw(ctx);
+
+			historyMap.push(
+				{
+					preRadius : spiralCurve.getR(startAngle),
+					nowRadius : spiralCurve.getR(endAngle),
+					// radius : spiralCurve.getR(startAngle),
+					startAngle : startAngle,
+					endAngle : endAngle,
+					angleStepChange : angleStepChange,
+					strokeStyle : context.strokeStyle,
+					prevX : prevX,
+					prevY : prevY,
+					nowX : nowX,
+					nowY : nowY,
+					quadraticCurve : quadraticCurve
+				}
+			)
+
+			prevX = nowX;
+			prevY = nowY;
+
+		}
+
+	}
+
+	var repeatDraw = function(angle){
+
+		angle = angle || Math.PI/4
+
+		// ctx.clearRect(0,0,1000,1000); 
+
+		function rotateCurve(curve){
+			curve.startAngle =curve.startAngle + (angle || curve.angleStepChange);
+			curve.endAngle =curve.endAngle + (angle || curve.angleStepChange);
+
+			console.log(curve.startAngle,curve.endAngle,curve.preRadius,curve.nowRadius)
+
+			curve.quadraticCurve.setStartPoint({
+
+				x:curve.preRadius*Math.cos(curve.startAngle)+circleCenterPoint.x,
+				y:curve.preRadius*Math.sin(curve.startAngle)+circleCenterPoint.y
+
+			}).setEndPoint({
+
+				x:curve.nowRadius*Math.cos(curve.endAngle)+circleCenterPoint.x,
+				y:curve.nowRadius*Math.sin(curve.endAngle)+circleCenterPoint.y
+
+			}).setCtrPointByBasePoint();
+
+		}
+
+
+
+		function beforeStroke(curve){
+
+			context.beginPath();
+
+			context.strokeStyle=curve.strokeStyle;
+
+			rotateCurve(curve)
+		}
+
+		function afterStroke(){}
+
+
+		historyMap.forEach(function(curve){
+
+			beforeStroke(curve)
+
+			curve.quadraticCurve.draw(ctx)
+
+			context.stroke();
+
+			afterStroke();
+		})
+
+	}
+
+	setInterval(function(){
+		repeatDraw()
+	},1000000)
+
+	draw()
+	repeatDraw(Math.PI)
+}
+</script>
+</head>
+<body style="margin:100px 50px;">
+<canvas id="myCanvas" width="1000" height="1000" style="border:solid 2px #06f;"></canvas>
+</body>
+</html>
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html>
+<head>
+<title>绘制螺旋线</title>
+<script>
+var getColor = function(r,g,b){
+	if(Array.isArray(r)){
+		return `rgb(${r[0]},${r[1]},${r[2]})`;
+	}
+	return `rgb(${r},${g},${b})';`
+}
+
+function vector(x,y){
+
+}
+
+function SpiralCurve(distance,adjustAngle,initRadius){
 	this.distance = distance || 50;
 	this.radius = initRadius || 0;
 	this.adjustAngle = adjustAngle || 0;
@@ -46,7 +315,7 @@ function QuadraticCurve(startPoint,endPoint,ctrPoint){
 	this.ctrPoint = ctrPoint || {x:0,y:0};
 }
 
-QuadraticCurve.prototype.setCtrPoint =  function(basePoint){
+QuadraticCurve.prototype.setCtrPointByBasePoint =  function(basePoint){
 	var basePoint = basePoint || {x:500,y:500};
 	var x,y
 
@@ -137,12 +406,12 @@ window.onload = function() {
 
 
 
-	var history = []; // {radius:,angle:}
+	var historyMap = []; // {radius:,angle:}
 	var curve = null;
 
 	function draw(){
 
-		for (var step=0,steps = 555,colorStepChange = (255/steps); step<steps; step++)
+		for (var step=0,steps = 1555,colorStepChange = (255/steps); step<steps; step++)
 		{
 
 
@@ -173,11 +442,11 @@ window.onload = function() {
 			},{
 				x:nowX,
 				y:nowY
-			}).setCtrPoint().draw(ctx);
+			}).setCtrPointByBasePoint().draw(ctx);
 
 			// context.lineTo(nowX,nowY);
 
-			history.push(
+			historyMap.push(
 				{
 					preRadius : spiralCurve.getR(startAngle),
 					nowRadius : spiralCurve.getR(endAngle),
@@ -222,7 +491,7 @@ window.onload = function() {
 				x:curve.nowRadius*Math.cos(curve.endAngle)+circleCenterPoint.x,
 				y:curve.nowRadius*Math.sin(curve.endAngle)+circleCenterPoint.y
 
-			}).setCtrPoint();
+			}).setCtrPointByBasePoint();
 
 		}
 
@@ -240,7 +509,7 @@ window.onload = function() {
 		function afterStroke(){}
 
 
-		history.forEach(function(curve){
+		historyMap.forEach(function(curve){
 
 			beforeStroke(curve)
 
@@ -259,7 +528,7 @@ window.onload = function() {
 
 	setInterval(function(){
 		repeatDraw()
-	},100)
+	},1000000)
 
 	draw()
 	// repeatDraw()
@@ -269,4 +538,4 @@ window.onload = function() {
 <body style="margin:100px 50px;">
 <canvas id="myCanvas" width="1000" height="1000" style="border:solid 2px #06f;"></canvas>
 </body>
-</html>
+</html> -->
